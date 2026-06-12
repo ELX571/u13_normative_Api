@@ -89,6 +89,11 @@ DATABASES = {
 }
 
 AUTH_USER_MODEL = 'accounts.User'
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'accounts.authentication.CsrfExemptSessionAuthentication',
+    ],
+}
 
 
 # Password validation
