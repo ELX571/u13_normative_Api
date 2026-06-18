@@ -1,6 +1,7 @@
 from django.contrib.auth import logout
 from django.shortcuts import render
 from rest_framework import status, permissions, viewsets
+from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.mixins import CreateModelMixin
 from rest_framework.response import Response
@@ -45,3 +46,21 @@ class AuthAPIView(viewsets.GenericViewSet,CreateModelMixin):
         user=request.user
         return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
 
+class AuthWithToken(viewsets.GenericViewSet):
+    def get_permissions(self):
+        if self.action in ('logout', 'session'):
+            return [permissions.IsAuthenticated()]
+        else:
+            return [permissions.AllowAny()]
+
+    @action(methods=['post'], detail=False, url_path='login',serializer_class=UserLoginSerializer)
+    def login(self, request):
+        serializer = UserLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        key= user.token
+        return Response({'token':key})
+    @action(methods=['delete'], detail=False, url_path='logout')
+    def logout(self, request):
+        Token.objects.filter(user=request.user).delete()
+        return Response({'massage':'seccessfully logged out'})

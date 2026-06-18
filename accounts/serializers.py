@@ -31,6 +31,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class UserLoginSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields=('id','username','password')
+        extra_kwargs = {'password': {'write_only': True}}
+        read_only_fields = ('id',)
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
     def validate(self, data):

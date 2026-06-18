@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     #Installed
 
     'rest_framework',
+    'rest_framework.authtoken',
 
 ]
 
@@ -92,6 +93,7 @@ AUTH_USER_MODEL = 'accounts.User'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'accounts.authentication.CsrfExemptSessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
 }
 
