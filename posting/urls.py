@@ -6,6 +6,7 @@ from posting import views
 router = DefaultRouter()
 router.register(r'posts-viewset', views.PostViewSet, basename='post-viewset')
 router.register(r'posts-modelviewset', views.PostModelViewSet, basename='post-modelviewset')
+router.register(r'posts', views.PostModelViewSet, basename='posts')
 
 urlpatterns = [
     path('salom-api/',views.salomApiView,name='salom'),

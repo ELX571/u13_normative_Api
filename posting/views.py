@@ -1,4 +1,3 @@
-
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Q
 from django.http import JsonResponse
@@ -11,6 +10,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from posting.models import Post
 from posting.serializers import PostSerializer, PostListSerializer
 from posting.paginations import CustomPagination
+from rest_framework import permissions
+from posting.permissions import IsOwnerOrReadOnly
 
 
 # Create your views here.
@@ -56,6 +57,7 @@ class PostModelViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     pagination_class = CustomPagination
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['created']
@@ -71,9 +73,13 @@ class PostModelViewSet(viewsets.ModelViewSet):
             ).order_by('-similarity_title')
         return self.queryset
 
+    def perform_create(self, serializer):
+        serializer.save(from_user=self.request.user)
+
 
 class PostViewSet(viewsets.ViewSet):
     serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def list(self, request):
         posts = Post.objects.all()
@@ -83,7 +89,7 @@ class PostViewSet(viewsets.ViewSet):
     def create(self, request):
         serializer = PostSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(from_user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

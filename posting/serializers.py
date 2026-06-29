@@ -6,6 +6,7 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = '__all__'
+        read_only_fields = ['from_user']
 
     def validate(self, data):
         title = data.get('title')
