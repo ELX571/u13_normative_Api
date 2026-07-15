@@ -21,7 +21,7 @@ def salomApiView(request):
 
 class PostApiView(APIView):
     def get(self,request):
-        posts = Post.objects.all()
+        posts = Post.objects.select_related('from_user').all()
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data)
 
@@ -35,13 +35,13 @@ class PostApiView(APIView):
 
 class PostDetailApiView(APIView):
     def get(self, request,pk):
-        post = get_object_or_404(Post,pk=pk)
+        post = get_object_or_404(Post.objects.select_related('from_user'), pk=pk)
         serializer = PostSerializer(post)
         return Response(serializer.data)
         serializer = PostListSerializer(post)
         return Response(serializer.data)
     def put(self, request,pk):
-        post = Post.objects.get(pk=pk)
+        post = Post.objects.select_related('from_user').get(pk=pk)
         serializer = PostSerializer(post, request.data)
         if serializer.is_valid():
             serializer.save()
@@ -54,7 +54,7 @@ class PostDetailApiView(APIView):
 
 
 class PostModelViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.all()
+    queryset = Post.objects.select_related('from_user').all()
     serializer_class = PostSerializer
     pagination_class = CustomPagination
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
@@ -82,7 +82,7 @@ class PostViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def list(self, request):
-        posts = Post.objects.all()
+        posts = Post.objects.select_related('from_user').all()
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data)
 
@@ -94,12 +94,12 @@ class PostViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, pk=None):
-        post = get_object_or_404(Post, pk=pk)
+        post = get_object_or_404(Post.objects.select_related('from_user'), pk=pk)
         serializer = PostSerializer(post)
         return Response(serializer.data)
 
     def update(self, request, pk=None):
-        post = get_object_or_404(Post, pk=pk)
+        post = get_object_or_404(Post.objects.select_related('from_user'), pk=pk)
         serializer = PostSerializer(post, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -107,7 +107,7 @@ class PostViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def partial_update(self, request, pk=None):
-        post = get_object_or_404(Post, pk=pk)
+        post = get_object_or_404(Post.objects.select_related('from_user'), pk=pk)
         serializer = PostSerializer(post, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()

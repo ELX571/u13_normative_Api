@@ -27,7 +27,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        User.objects.create_user(**validated_data)
+        validated_data.pop('re_password', None)
+        return User.objects.create_user(**validated_data)
 
 
 class UserLoginSerializer(serializers.ModelSerializer):
@@ -45,7 +46,8 @@ class UserLoginSerializer(serializers.ModelSerializer):
       user = authenticate(username=username, password=password)
       if  user is None:
           raise serializers.ValidationError('Invalid username and/or password.')
-      return ('user', user)
+      data['user'] = user
+      return data
 
 
 
