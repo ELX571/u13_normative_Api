@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time Chat — WebSocket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #16162a;
+      --surface2: #1e1e38;
+      --border: #2a2a50;
+      --accent: #7c6af7;
+      --accent2: #5b8af7;
+      --accent-glow: rgba(124, 106, 247, 0.25);
+      --text: #e8e8f8;
+      --text-muted: #8080b0;
+      --system: #4caf88;
+      --own-bubble: linear-gradient(135deg, #7c6af7, #5b8af7);
+      --other-bubble: #1e1e38;
+      --danger: #f76a6a;
+      --radius: 18px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .chat-wrapper {
+      width: 100%;
+      max-width: 680px;
+      height: 90dvh;
+      max-height: 780px;
+      display: flex;
+      flex-direction: column;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 0 80px rgba(92, 100, 247, 0.15), 0 32px 64px rgba(0,0,0,0.6);
+    }
+
+    /* Header */
+    .chat-header {
+      background: var(--surface);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .header-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--own-bubble);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 16px var(--accent-glow);
+      flex-shrink: 0;
+    }
+
+    .header-info { flex: 1; }
+    .header-info h1 { font-size: 15px; font-weight: 600; }
+    .header-info p  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #4caf88;
+      box-shadow: 0 0 8px #4caf88;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    /* Name setup bar */
+    .name-bar {
+      background: var(--surface2);
+      padding: 12px 24px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .name-bar label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+    .name-bar input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .name-bar input:focus { border-color: var(--accent); }
+
+    .btn-name {
+      background: var(--own-bubble);
+      color: #fff;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-name:hover { opacity: 0.85; }
+
+    /* Messages area */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--bg);
+    }
+
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 75%;
+      animation: fadeUp 0.25s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.own  { align-self: flex-end; align-items: flex-end; }
+    .msg.other{ align-self: flex-start; align-items: flex-start; }
+    .msg.system {
+      align-self: center;
+      align-items: center;
+      max-width: 90%;
+    }
+
+    .msg-username {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      padding: 0 4px;
+    }
+
+    .msg-bubble {
+      padding: 10px 16px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .msg.own   .msg-bubble {
+      background: var(--own-bubble);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .msg.other .msg-bubble {
+      background: var(--surface2);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .msg.system .msg-bubble {
+      background: rgba(76,175,136,0.12);
+      color: var(--system);
+      font-size: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(76,175,136,0.25);
+      padding: 6px 14px;
+    }
+
+    .msg-time {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      padding: 0 4px;
+    }
+
+    /* Connection status */
+    .conn-status {
+      text-align: center;
+      font-size: 12px;
+      padding: 6px 0;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .conn-status.connected    { color: var(--system); }
+    .conn-status.disconnected { color: var(--danger); }
+
+    /* Input area */
+    .input-area {
+      background: var(--surface);
+      padding: 16px 24px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #message-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 18px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      resize: none;
+      max-height: 120px;
+    }
+    #message-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    #message-input::placeholder { color: var(--text-muted); }
+
+    #send-btn {
+      width: 46px; height: 46px;
+      background: var(--own-bubble);
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 16px var(--accent-glow);
+      flex-shrink: 0;
+    }
+    #send-btn:hover  { transform: scale(1.08); box-shadow: 0 6px 24px var(--accent-glow); }
+    #send-btn:active { transform: scale(0.96); }
+    #send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  </style>
+</head>
+<body>
+
+<div class="chat-wrapper">
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="header-avatar">💬</div>
+    <div class="header-info">
+      <h1>Real-Time Chat</h1>
+      <p>WebSocket · Django Channels</p>
+    </div>
+    <div class="status-dot" id="status-dot" style="background:#f76a6a; box-shadow:0 0 8px #f76a6a;"></div>
+  </div>
+
+  <!-- Name Bar -->
+  <div class="name-bar">
+    <label for="username-input">Ismingiz:</label>
+    <input id="username-input" type="text" placeholder="Ism kiriting..." maxlength="30" value="User" />
+    <button class="btn-name" onclick="setUsername()">✓ Tayyor</button>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages" id="messages"></div>
+
+  <!-- Connection status -->
+  <div class="conn-status disconnected" id="conn-status">⚡ Ulanilmoqda...</div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <textarea id="message-input" rows="1" placeholder="Xabar yozing..." disabled></textarea>
+    <button id="send-btn" onclick="sendMessage()" disabled title="Yuborish">➤</button>
+  </div>
+</div>
+
+<script>
+  /* ─── State ─── */
+  let socket = null;
+  let myUsername = localStorage.getItem('chat_username') || 'User';
+  document.getElementById('username-input').value = myUsername;
+
+  const messagesEl   = document.getElementById('messages');
+  const inputEl      = document.getElementById('message-input');
+  const sendBtn      = document.getElementById('send-btn');
+  const connStatus   = document.getElementById('conn-status');
+  const statusDot    = document.getElementById('status-dot');
+
+  /* ─── Username ─── */
+  function setUsername() {
+    const val = document.getElementById('username-input').value.trim();
+    if (val) {
+      myUsername = val;
+      localStorage.setItem('chat_username', val);
+      appendMessage('System', `Ismingiz: "${myUsername}" ga o'zgartirildi`, 'system');
+    }
+  }
+
+  /* ─── WebSocket ─── */
+  function connect() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${proto}://${location.host}/ws/chat/`;
+    socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      setStatus(true);
+      inputEl.disabled  = false;
+      sendBtn.disabled  = false;
+      inputEl.focus();
+    };
+
+    socket.onclose = () => {
+      setStatus(false);
+      inputEl.disabled = true;
+      sendBtn.disabled = true;
+      // Auto-reconnect after 3 seconds
+      setTimeout(connect, 3000);
+      appendMessage('System', '🔴 Ulanish uzildi. Qayta ulanmoqda...', 'system');
+    };
+
+    socket.onerror = () => {
+      appendMessage('System', '⚠️ WebSocket xatosi yuz berdi.', 'system');
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const isOwn = data.username === myUsername && data.username !== 'System';
+      const type  = data.username === 'System' ? 'system' : (isOwn ? 'own' : 'other');
+      appendMessage(data.username, data.message, type);
+    };
+  }
+
+  /* ─── Send ─── */
+  function sendMessage() {
+    const msg = inputEl.value.trim();
+    if (!msg || !socket || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(JSON.stringify({
+      message:  msg,
+      username: myUsername,
+    }));
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    inputEl.focus();
+  }
+
+  /* ─── UI Helpers ─── */
+  function appendMessage(username, message, type) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg ${type}`;
+
+    const now = new Date();
+    const time = now.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+
+    if (type !== 'system') {
+      const uEl = document.createElement('div');
+      uEl.className = 'msg-username';
+      uEl.textContent = username;
+      wrapper.appendChild(uEl);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = message;
+    wrapper.appendChild(bubble);
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'msg-time';
+    timeEl.textContent = time;
+    wrapper.appendChild(timeEl);
+
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function setStatus(connected) {
+    const color = connected ? '#4caf88' : '#f76a6a';
+    statusDot.style.background    = color;
+    statusDot.style.boxShadow     = `0 0 8px ${color}`;
+    connStatus.textContent = connected
+      ? '🟢 Ulangan — xabar yuboring!'
+      : '🔴 Ulanish uzildi...';
+    connStatus.className = `conn-status ${connected ? 'connected' : 'disconnected'}`;
+  }
+
+  /* ─── Keyboard shortcuts ─── */
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  /* Auto-resize textarea */
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  });
+
+  /* ─── Start ─── */
+  connect();
+</script>
+</body>
+</html>

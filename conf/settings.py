@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',  # ASGI server — channels'dan oldin bo'lishi kerak
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -40,9 +41,10 @@ INSTALLED_APPS = [
     #local
     'posting',
     'accounts',
+    'chat',
 
     #Installed
-
+    'channels',
     'rest_framework',
     'rest_framework.authtoken',
     'django_filters',
@@ -80,6 +82,16 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'conf.wsgi.application'
+
+# Django Channels ASGI
+ASGI_APPLICATION = 'conf.asgi.application'
+
+# Channel Layer — In-Memory (development uchun, production'da Redis ishlatiladi)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 
 # Database
