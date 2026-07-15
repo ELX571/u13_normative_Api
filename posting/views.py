@@ -12,6 +12,7 @@ from posting.serializers import PostSerializer, PostListSerializer
 from posting.paginations import CustomPagination
 from rest_framework import permissions
 from posting.permissions import IsOwnerOrReadOnly
+from posting.tasks import send_post_created_notification
 
 
 # Create your views here.
@@ -74,7 +75,9 @@ class PostModelViewSet(viewsets.ModelViewSet):
         return self.queryset
 
     def perform_create(self, serializer):
-        serializer.save(from_user=self.request.user)
+        post = serializer.save(from_user=self.request.user)
+        # Background'da notification task ishga tushiramiz (N+1 yo'q, blocking yo'q)
+        send_post_created_notification.delay(post.id, self.request.user.username)
 
 
 class PostViewSet(viewsets.ViewSet):
