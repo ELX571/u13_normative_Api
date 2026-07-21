@@ -31,7 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'daphne',  # ASGI server — channels'dan oldin bo'lishi kerak
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -108,13 +108,7 @@ DATABASES = {
     }
 }
 AUTH_USER_MODEL = 'accounts.User'
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'accounts.authentication.CsrfExemptSessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-    ],
-}
+
 
 
 # Password validation
@@ -165,3 +159,33 @@ CELERY_TIMEZONE = 'UTC'
 
 # Celery Beat — periodik tasklar uchun
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'accounts.authentication.CsrfExemptSessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'restframework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES':{
+        'anon': '100/day',
+        'user': '100/minute',
+    }
+
+}
+
+CACHES = {
+    'default': {
+        'BACKEND':  'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+CACHE_TTL = 60 * 5

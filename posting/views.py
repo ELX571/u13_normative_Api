@@ -1,4 +1,5 @@
 from django.contrib.postgres.search import TrigramSimilarity
+from django.core.cache import cache
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -7,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 
+from conf.settings import CACHE_TTL
 from posting.models import Post
 from posting.serializers import PostSerializer, PostListSerializer
 from posting.paginations import CustomPagination
@@ -21,7 +23,7 @@ def salomApiView(request):
 
 
 class PostApiView(APIView):
-    def get(self,request):
+    def list(self,request):
         posts = Post.objects.select_related('from_user').all()
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data)
@@ -31,26 +33,33 @@ class PostApiView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
+        cache.delete('post_list')
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PostDetailApiView(APIView):
     def get(self, request,pk):
-        post = get_object_or_404(Post.objects.select_related('from_user'), pk=pk)
-        serializer = PostSerializer(post)
-        return Response(serializer.data)
-        serializer = PostListSerializer(post)
-        return Response(serializer.data)
+        cache_data=cache.get('post_list')
+        if not cache_data:
+            post = get_object_or_404(Post.objects.select_related('from_user'), pk=pk)
+            serializer = PostSerializer(post)
+            cache.set('post_list',serializer.data,CACHE_TTL)
+            return Response({'data':serializer.data, 'cache':False})
+        return Response({'data':cache_data, 'cache':True})
     def put(self, request,pk):
         post = Post.objects.select_related('from_user').get(pk=pk)
         serializer = PostSerializer(post, request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
+        cache.delete('post_detail_{pk}')
+        cache.delete('post_list')
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def delete(self,request,pk):
         post = Post.objects.get(pk=pk)
         post.delete()
+        cache.delete('post_detail_{pk}')
+        cache.delete('post_list')
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
